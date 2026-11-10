@@ -18,7 +18,7 @@ coverage/
 .neon-api-key
 
 # Médias (photos produits, signatures, preuves de livraison)
-uploads/
+/uploads/
 
 # PostgreSQL portable de développement (npm run db:local)
 .pgdata/
