@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")          // pooled : trafic applicatif (serverless, Vercel)
+  directUrl = env("DATABASE_URL_UNPOOLED") // direct : migrations Prisma (neon deploy / env pull)
 }
 
 // ------------------------------------------------------------------ ENUMS
