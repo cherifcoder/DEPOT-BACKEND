@@ -108,6 +108,10 @@ Voir [`.env.example`](.env.example). Les essentielles :
 
 ## 5. Déploiement sur Vercel
 
+> 🟢 **Instance de production actuelle** : <https://depotbackend.vercel.app> —
+> projet Vercel `cherifcoders-projects/depotbackend`, base **Neon** (branche `production`).
+> Migrations et seed appliqués via `DATABASE_URL_UNPOOLED` (connexion directe).
+
 Le dépôt est prêt pour Vercel : [`api/index.ts`](api/index.ts) exporte l'application Express
 comme fonction serverless et [`vercel.json`](vercel.json) réécrit toutes les routes vers elle.
 
@@ -128,8 +132,9 @@ ENABLE_CRON=false
 Vercel n'exécute pas les migrations ; à lancer une fois depuis une machine de confiance :
 
 ```bash
-DATABASE_URL="postgresql://..." npm run db:deploy
-DATABASE_URL="postgresql://..." npm run db:seed      # données de démonstration (optionnel)
+# avec Neon : récupérer les chaînes via `neon deploy` (écrit .env.local)
+DATABASE_URL_UNPOOLED="postgresql://..." npm run db:deploy   # connexion directe
+DATABASE_URL="postgresql://..." JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... ENABLE_CRON=false npm run db:seed
 ```
 
 ### Limitations en serverless
