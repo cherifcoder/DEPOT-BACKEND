@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — typecheck, tests, build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://depot:depot@localhost:5432/depot_boissons_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789
+      JWT_REFRESH_SECRET: ci-refresh-secret-0123456789
+      ENABLE_CRON: "false"
+      LOG_LEVEL: silent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérification TypeScript
+        run: npm run typecheck
+
+      - name: Tests unitaires et smoke tests
+        run: npm test
+
+      - name: Build de production
+        run: npm run build
+
+  database:
+    name: PostgreSQL — migrations et seed
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://depot:depot@localhost:5432/depot_boissons?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789
+      JWT_REFRESH_SECRET: ci-refresh-secret-0123456789
+      ENABLE_CRON: "false"
+      LOG_LEVEL: silent
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: depot
+          POSTGRES_PASSWORD: depot
+          POSTGRES_DB: depot_boissons
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U depot -d depot_boissons"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Appliquer les migrations
+        run: npx prisma migrate deploy
+
+      - name: Charger le jeu de démonstration
+        run: npm run db:seed
+
+      - name: Vérifier les données
+        run: |
+          node --input-type=module -e '
+            import { PrismaClient } from "@prisma/client";
+            const prisma = new PrismaClient();
+            const counts = {};
+            for (const model of ["user", "product", "client", "supplier", "sale", "purchase", "delivery", "expense", "loss", "receipt"]) {
+              counts[model] = await prisma[model].count();
+            }
+            console.log(counts);
+            if (counts.user === 0 || counts.product === 0 || counts.sale === 0) process.exit(1);
+            await prisma.$disconnect();
+          '
+
+      - name: État des migrations
+        run: npx prisma migrate status

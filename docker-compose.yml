@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: depot-boissons-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: depot
+      POSTGRES_PASSWORD: depot
+      POSTGRES_DB: depot_boissons
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - depot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U depot -d depot_boissons"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+    container_name: depot-boissons-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://depot:depot@postgres:5432/depot_boissons?schema=public
+      JWT_ACCESS_SECRET: change-me-access
+      JWT_REFRESH_SECRET: change-me-refresh
+      PUBLIC_BASE_URL: http://localhost:4000
+      CORS_ORIGINS: "*"
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "4000:4000"
+    volumes:
+      - depot_uploads:/app/uploads
+
+volumes:
+  depot_pgdata:
+  depot_uploads:
