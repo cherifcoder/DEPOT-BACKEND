@@ -32,10 +32,14 @@ export interface CompanyInfo {
   taxId: string | null;
   currency: string;
   invoiceFooter: string;
+  /** Logo du depot (URL http(s) absolue) affiche en tete des documents. */
+  logoUrl: string | null;
 }
 
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 42;
+const LOGO_MAX_WIDTH = 92;
+const LOGO_MAX_HEIGHT = 46;
 const GREEN = rgb(0.08, 0.33, 0.2);
 const GREEN_LIGHT = rgb(0.91, 0.96, 0.92);
 const GRAY = rgb(0.42, 0.45, 0.5);
@@ -122,7 +126,7 @@ class Doc {
     const regular = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
     doc.setTitle('Document');
-    doc.setProducer('Depot Boissons');
+    doc.setProducer('Depot Haidara');
     return new Doc(doc, regular, bold);
   }
 
@@ -190,23 +194,33 @@ class Doc {
   }
 }
 
-function drawHeader(doc: Doc, company: CompanyInfo, title: string, reference: string, date: string, extra?: string): void {
-  doc.text(company.storeName, MARGIN, 17, { bold: true, color: GREEN });
+function drawHeader(doc: Doc, company: CompanyInfo, logo: PDFImage | null, title: string, reference: string, date: string, extra?: string): void {
+  let textX = MARGIN;
+
+  if (logo) {
+    const scale = Math.min(LOGO_MAX_WIDTH / logo.width, LOGO_MAX_HEIGHT / logo.height);
+    const width = logo.width * scale;
+    const height = logo.height * scale;
+    doc.page.drawImage(logo, { x: MARGIN, y: A4[1] - MARGIN - height + 4, width, height });
+    textX = MARGIN + width + 14;
+  }
+
+  doc.text(company.storeName, textX, 17, { bold: true, color: GREEN });
   doc.y -= 16;
   if (company.address) {
-    doc.text(company.address, MARGIN, 8.5, { color: GRAY, maxWidth: 280 });
+    doc.text(company.address, textX, 8.5, { color: GRAY, maxWidth: 280 });
     doc.y -= 11;
   }
   if (company.phone) {
-    doc.text(`Tel : ${company.phone}`, MARGIN, 8.5, { color: GRAY });
+    doc.text(`Tel : ${company.phone}`, textX, 8.5, { color: GRAY });
     doc.y -= 11;
   }
   if (company.email) {
-    doc.text(company.email, MARGIN, 8.5, { color: GRAY });
+    doc.text(company.email, textX, 8.5, { color: GRAY });
     doc.y -= 11;
   }
   if (company.taxId) {
-    doc.text(`N° fiscal : ${company.taxId}`, MARGIN, 8.5, { color: GRAY });
+    doc.text(`N° fiscal : ${company.taxId}`, textX, 8.5, { color: GRAY });
   }
 
   const top = A4[1] - MARGIN;
@@ -287,10 +301,12 @@ export async function buildInvoicePdf(sale: Invoice, company: CompanyInfo): Prom
   const doc = await Doc.create();
   const currency = company.currency;
   const client = sale.client;
+  const logo = await embedImage(doc.doc, company.logoUrl);
 
   drawHeader(
     doc,
     company,
+    logo,
     sale.status === 'ANNULEE' ? 'FACTURE ANNULEE' : 'FACTURE',
     sale.reference,
     formatDate(sale.saleDate),
@@ -385,10 +401,12 @@ export async function buildInvoicePdf(sale: Invoice, company: CompanyInfo): Prom
 export async function buildDeliverySlipPdf(delivery: DeliverySlip, company: CompanyInfo): Promise<Buffer> {
   const doc = await Doc.create();
   const currency = company.currency;
+  const logo = await embedImage(doc.doc, company.logoUrl);
 
   drawHeader(
     doc,
     company,
+    logo,
     'BON DE LIVRAISON',
     delivery.reference,
     formatDate(delivery.createdAt),
@@ -499,10 +517,12 @@ export async function buildClientStatementPdf(
 ): Promise<Buffer> {
   const doc = await Doc.create();
   const currency = company.currency;
+  const logo = await embedImage(doc.doc, company.logoUrl);
 
   drawHeader(
     doc,
     company,
+    logo,
     'RELEVE DE COMPTE',
     client.id.slice(0, 8).toUpperCase(),
     `Du ${formatDate(range.from)} au ${formatDate(range.to)}`,

@@ -86,8 +86,24 @@ export async function saveSignature(dataUrl: string): Promise<StoredMedia> {
   return saveBuffer(buffer, 'signatures', mimeType);
 }
 
-/** Lit un media stocke localement a partir de son URL publique relative. */
+/**
+ * Lit un media a partir de son URL :
+ * - URL http(s) absolue (ex. logo statique servi par l'API : /logo.png) ;
+ * - chemin local sous /files/ (medias uploades).
+ * Retourne null si le media est introuvable ou illisible.
+ */
 export async function readMedia(url: string | null | undefined): Promise<Buffer | null> {
+  if (url && /^https?:\/\//i.test(url)) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!response.ok) return null;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return buffer.byteLength > 0 ? buffer : null;
+    } catch {
+      return null;
+    }
+  }
+
   if (!url?.startsWith('/files/')) return null;
 
   const relative = url.slice('/files/'.length);

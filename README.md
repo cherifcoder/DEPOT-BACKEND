@@ -86,7 +86,8 @@ npm run dev              # http://localhost:4000/health
 | `npm run db:migrate` | migrations en mode dev |
 | `npm run db:deploy` | applique les migrations (production) |
 | `npm run db:seed` | jeu de démonstration |
-| `npm run db:reset` | réinitialise tout (destructif) |
+| `npm run db:reset` | remet la base à zéro (destructif, sans données de démo) |
+| `npm run db:bootstrap` | compte administrateur unique + réglages du dépôt (factures) |
 
 ---
 
@@ -114,6 +115,9 @@ Voir [`.env.example`](.env.example). Les essentielles :
 
 Le dépôt est prêt pour Vercel : [`api/index.ts`](api/index.ts) exporte l'application Express
 comme fonction serverless et [`vercel.json`](vercel.json) réécrit toutes les routes vers elle.
+Le logo du dépôt ([`assets/logo.png`](assets/logo.png)) est copié dans `dist/` au build et servi
+en statique (`/logo.png`) : il apparaît en en-tête des factures, bons de livraison et relevés
+(réglage `logoUrl` de l'entité `systemSetting`).
 
 ### Variables à configurer sur Vercel (Production)
 
@@ -134,6 +138,22 @@ Vercel n'exécute pas les migrations ; à lancer une fois depuis une machine de 
 ```bash
 # avec Neon : récupérer les chaînes via `neon deploy` (écrit .env.local)
 DATABASE_URL_UNPOOLED="postgresql://..." npm run db:deploy   # connexion directe
+```
+
+#### Remise à zéro de production
+
+```bash
+# base vide (aucune donnée de démonstration) + compte administrateur unique
+# + réglages du dépôt : Dépôt HAIDARA, Près de la SONATAM, Tel 75191786, logo des factures
+DATABASE_URL="postgresql://..." JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... npm run db:reset
+DATABASE_URL="postgresql://..." JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... npm run db:bootstrap
+```
+
+Variables optionnelles du bootstrap : `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME`, `LOGO_URL`.
+
+#### Données de démonstration (développement)
+
+```bash
 DATABASE_URL="postgresql://..." JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... ENABLE_CRON=false npm run db:seed
 ```
 
@@ -171,9 +191,17 @@ migrations + seed sur PostgreSQL 16 à chaque push/PR sur `main`.
 
 ---
 
-## 8. Comptes de démonstration
+## 8. Comptes
 
-Après `npm run db:seed` :
+En production (`npm run db:bootstrap`), **un seul compte existe** :
+
+| Rôle | Identifiant | Mot de passe |
+| --- | --- | --- |
+| Administrateur | `admin@depot.app` | `Admin@2026!` |
+
+> ⚠️ À changer via l'application avant toute utilisation réelle.
+
+Comptes de démonstration (uniquement après `npm run db:seed`, développement) :
 
 | Rôle | Identifiant | Mot de passe |
 | --- | --- | --- |
@@ -181,5 +209,3 @@ Après `npm run db:seed` :
 | Vendeur | `vendeur@depot.app` | `Vendeur@2026!` |
 | Comptable | `comptable@depot.app` | `Comptable@2026!` |
 | Livreur | `livreur@depot.app` | `Livreur@2026!` |
-
-> ⚠️ À changer avant toute utilisation réelle.

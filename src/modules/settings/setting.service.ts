@@ -38,6 +38,7 @@ export async function getCompanyInfo(): Promise<CompanyInfo> {
     taxId: settings.taxId,
     currency: settings.currency,
     invoiceFooter: settings.invoiceFooter,
+    logoUrl: settings.logoUrl,
   };
 }
 
